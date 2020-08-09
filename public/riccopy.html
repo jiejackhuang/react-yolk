@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>raf</title>
+</head>
+
+<body>
+    <div style="background-color: blue; width: 0;height: 20px;">s</div>
+    <button>start</button>
+    <script>
+
+        // messagechannel 的postmessage 在红任务里级别比settimeout更高 可以更早在绘制结束
+        //后调用
+        let div = document.querySelector('div')
+        let button = document.querySelector('button')
+        let startTime
+        function sleep(duration) {
+            let start = Date.now()
+            while (start + duration > Date.now()) {
+
+            }//2000ms之后结束
+        }
+        function progress() {
+            console.log('progress')
+            requestAnimationFrame(progress)
+        }
+        //requestAnimationFrame(progress)
+
+        let channel = new MessageChannel()
+        let activeFrameTime = 1000 / 60
+        let frameDeadline;//这一帧的截止时间
+        let pendingCallback;
+        let timeRemaining = () => frameDeadline - performance.now()
+        channel.port2.onmessage = function () {
+            let currentTime = performance.now()
+            // 如果帧的截止时间已经小于当前时间 说明已经过期了
+            let didTimeout = frameDeadline <= currentTime
+            if (didTimeout || timeRemaining() > 0) {
+                if (pendingCallback) {
+                    console.log('didTimeout', didTimeout)
+                    console.log('timeRemaining',  timeRemaining)
+                    pendingCallback({ didTimeout, timeRemaining })
+                }
+            }
+        }
+        window.requestIdleCallback = (callback, options) => {
+            requestAnimationFrame((rafTime) => {
+                console.log('rafTime', rafTime)
+                console.log('cb', callback)
+                //每一帧开始的时间+16.6= 就是一帧的截止时间了
+                frameDeadline = rafTime + activeFrameTime
+                pendingCallback = callback
+                // 其实发消息之后，相当于添加一个红任务
+                channel.port1.postMessage('hello')
+            })
+        }
+
+
+        const works = [
+            () => {
+                console.log('a1s')
+                sleep(20)
+                console.log('a1e')
+            },
+            () => {
+                console.log('a2s')
+                sleep(20)
+                console.log('a2e')
+            },
+            () => {
+                console.log('a3s')
+                sleep(20)
+                console.log('a4e')
+            },
+            () => {
+                console.log('a4s')
+                sleep(20)
+                console.log('a4e')
+            },
+            () => {
+                console.log('a5s')
+                sleep(20)
+                console.log('a5e')
+            }
+        ]
+
+
+
+
+        // 告诉浏览器 你可以在空闲的时间执行任务 但是如果已经过期了，不管有没有空 ，都要帮我执行
+        requestIdleCallback(workllop, { timeout: 1000 })
+        //循环执行工具
+        function workllop(deadline) {
+            console.log('本帧剩余时间', parseInt(deadline.timeRemaining()))//10ms
+            // 如果说还有剩余时间或者此任务已经过期了 并且还有未完成的任务
+            while (deadline.timeRemaining() > 0 || deadline.didTimeout && works.length > 0) {
+                // 第一个任务a1执行就花了超过20ms
+                performUnitOfWork()
+            }
+            if (works.length > 0) {
+                console.log(`只剩下${deadline.timeRemaining()},时间片已经到期了，等待下次调度`)
+                requestIdleCallback(workllop)
+            }
+        }
+        function performUnitOfWork() {
+            let work = works.shift()
+            work()
+        }
+    </script>
+</body>
+
+</html>

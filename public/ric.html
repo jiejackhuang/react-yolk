@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>raf</title>
+</head>
+
+<body>
+    <div style="background-color: blue; width: 0;height: 20px;">s</div>
+    <button>start</button>
+    <script>
+        let div = document.querySelector('div')
+        let button = document.querySelector('button')
+        let startTime
+        function sleep(duration) {
+            let start = Date.now()
+            while (start + duration > Date.now()) {
+
+            }//2000ms之后结束
+        }
+        const works = [
+            () => {
+                console.log('a1s')
+                sleep(20)
+                console.log('a1e')
+            },
+            () => {
+                console.log('a2s')
+                sleep(20)
+                console.log('a2e')
+            },
+            () => {
+                console.log('a3s')
+                sleep(20)
+                console.log('a4e')
+            },
+            () => {
+                console.log('a4s')
+                sleep(20)
+                console.log('a4e')
+            },
+            () => {
+                console.log('a5s')
+                sleep(20)
+                console.log('a5e')
+            }
+        ]
+        // 告诉浏览器 你可以在空闲的时间执行任务 但是如果已经过期了，不管有没有空 ，都要帮我执行
+        requestIdleCallback(workllop,{timeout:1000})
+        //循环执行工具
+        function workllop(deadline) {
+            console.log('本帧剩余时间', parseInt(deadline.timeRemaining()))//10ms
+            // 如果说还有剩余时间或者此任务已经过期了 并且还有未完成的任务
+            while (deadline.timeRemaining()  > 0  || deadline.didTimeout && works.length > 0) {
+                // 第一个任务a1执行就花了超过20ms
+                performUnitOfWork()
+            }
+            if (works.length > 0) {
+                console.log(`只剩下${deadline.timeRemaining()},时间片已经到期了，等待下次调度`)
+                requestIdleCallback(workllop)
+            }
+        }
+        function performUnitOfWork() {
+            let work = works.shift()
+            work()
+        }
+    </script>
+</body>
+
+</html>
